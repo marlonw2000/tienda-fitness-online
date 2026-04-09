@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Peptidos Costa Rica | Laboratorio Clínico de Péptidos</title>
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Three.js for medical 3D visuals -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4f8;
+            color: #1a2c3e;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Paleta farmacéutica / clínica: azules, blancos, verdes médicos */
+        :root {
+            --clinical-white: #ffffff;
+            --medical-blue: #0a5c8e;
+            --medical-light: #eef2f9;
+            --pharma-green: #1e7b5e;
+            --soft-gray: #e9edf2;
+            --dark-slate: #1f3a4b;
+            --primary-glow: #1c6e9e;
+        }
+
+        /* Custom cursor profesional */
+        .cursor-glow {
+            width: 8px;
+            height: 8px;
+            background: var(--medical-blue);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            filter: blur(1px);
+            transition: transform 0.05s linear;
+            opacity: 0.6;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #dce3ec; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--medical-blue); border-radius: 10px; }
+
+        /* Botones clínicos */
+        .btn-primary {
+            background: linear-gradient(135deg, #0a5c8e, #0c4b72);
+            border: none;
+            padding: 0.85rem 2rem;
+            border-radius: 2.5rem;
+            font-weight: 600;
+            color: white;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 4px 10px rgba(10,92,142,0.2);
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #0f6da3, #0a5c8e); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(10,92,142,0.25); }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--medical-blue);
+            padding: 0.75rem 1.8rem;
+            border-radius: 2.5rem;
+            font-weight: 500;
+            color: var(--medical-blue);
+            transition: 0.2s;
+        }
+        .btn-outline:hover { background: rgba(10,92,142,0.08); border-color: var(--pharma-green); color: var(--pharma-green); }
+
+        /* Navbar limpia */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 1rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #d4dee8;
+            transition: all 0.2s;
+        }
+        .logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--medical-blue);
+            letter-spacing: -0.3px;
+        }
+        .logo i { color: var(--pharma-green); margin-right: 6px; }
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { text-decoration: none; color: #1f4a6e; font-weight: 500; transition: 0.2s; }
+        .nav-links a:hover { color: var(--pharma-green); }
+
+        /* Hero Section con gradiente médico */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 1.5rem;
+            overflow: hidden;
+            background: linear-gradient(125deg, #eef2f9 0%, #ffffff 50%, #e2e9f2 100%);
+        }
+        #canvas-3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 950px;
+        }
+        .hero h1 {
+            font-size: clamp(2.8rem, 7vw, 4.8rem);
+            font-weight: 700;
+            color: #0a4c6e;
+            letter-spacing: -0.02em;
+        }
+        .hero p { font-size: 1.2rem; color: #2c5a7a; margin-bottom: 2rem; }
+        .badge {
+            background: #e0f0ff;
+            padding: 0.4rem 1.2rem;
+            border-radius: 40px;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--medical-blue);
+            border: 1px solid #c2d9ec;
+        }
+
+        /* Tarjetas de péptidos estilo clínico */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .peptide-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            border: 1px solid #dce5ed;
+            transition: all 0.25s;
+            text-align: center;
+        }
+        .peptide-card:hover { transform: translateY(-5px); border-color: var(--medical-blue); box-shadow: 0 20px 25px -12px rgba(10,92,142,0.1); }
+        .vial-icon-card {
+            font-size: 2.8rem;
+            background: #eef4fc;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 40px;
+            margin: 0 auto 1.2rem;
+            color: var(--medical-blue);
+        }
+        .badge-purity {
+            background: #e9f3e6;
+            color: #1e7b5e;
+            border-radius: 30px;
+            padding: 0.2rem 1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* Blog cards médicas */
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .blog-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.8rem;
+            border: 1px solid #dee6ef;
+            transition: 0.2s;
+        }
+        .blog-card:hover { border-color: var(--medical-blue); box-shadow: 0 12px 20px -12px rgba(0,0,0,0.05); }
+        .blog-card h3 { color: #0c4b72; margin-bottom: 0.75rem; }
+        .ref-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--pharma-green);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-bottom: 1px solid #cfe3dc;
+        }
+
+        /* Stats contenedor clínico */
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 2rem;
+            background: white;
+            border-radius: 2rem;
+            padding: 2rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.02);
+            border: 1px solid #e2eaf1;
+        }
+        .stat-number { font-size: 2.6rem; font-weight: 800; color: var(--medical-blue); }
+
+        /* Formulario médico */
+        .contact-form {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.8rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            border: 1px solid #e2eaf1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input, textarea {
+            width: 100%;
+            background: #fbfdff;
+            border: 1px solid #cbdbe0;
+            padding: 1rem 1.2rem;
+            border-radius: 2rem;
+            color: #1f3a4b;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus { border-color: var(--medical-blue); outline: none; box-shadow: 0 0 0 3px rgba(10,92,142,0.1); }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: #f8fafd;
+            border-top: 1px solid #e2eaf1;
+            color: #5f7f9c;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.7s ease;
+        }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+        @media (max-width: 800px) { .nav-links { gap: 1rem; } }
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0a4c6e;
+            margin-bottom: 1rem;
+        }
+        .clinical-bg {
+            background: #f9fbfe;
+        }
+    </style>
+</head>
+<body>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<nav class="navbar">
+    <div class="logo"><i class="fas fa-syringe"></i> PeptidosCR | Laboratorio Clínico</div>
+    <div class="nav-links">
+        <a href="#home">Inicio</a>
+        <a href="#peptides">Péptidos</a>
+        <a href="#blog">Evidencia</a>
+        <a href="#science">Ciencia</a>
+        <a href="#contact">Viales</a>
+    </div>
+</nav>
+
+<main>
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <canvas id="canvas-3d"></canvas>
+        <div class="hero-content">
+            <div class="badge"><i class="fas fa-flask"></i> Grado Farmacéutico · Costa Rica</div>
+            <h1>Peptidos Costa Rica</h1>
+            <p>Viales de péptidos con certificación analítica, pureza >99% y estándares clínicos. Innovación en medicina regenerativa.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="#peptides" class="btn-primary"><i class="fas fa-vial"></i> Catálogo de viales</a>
+                <a href="#blog" class="btn-outline"><i class="fas fa-book-medical"></i> Base científica</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sección de péptidos (viales farmacéuticos) -->
+    <section id="peptides" style="padding: 5rem 5%; background: #ffffff;">
+        <div class="reveal">
+            <h2 class="section-title">Viales de alta pureza farmacéutica</h2>
+            <p style="color: #3a6b8c; max-width: 600px;">Liofilizados estériles · Control de calidad HPLC · Almacenamiento criogénico</p>
+        </div>
+        <div class="cards-grid">
+            <div class="peptide-card reveal">
+                <div class="vial-icon-card"><i class="fas fa-vial"></i></div>
+                <h3>BPC-157</h3>
+                <p>Vial 5mg · Regeneración de tejidos conectivos, tendones y mucosa intestinal.</p>
+                <div class="badge-purity">Pureza 99.7%</div>
+            </div>
+            <div class="peptide-card reveal">
+                <div class="vial-icon-card"><i class="fas fa-syringe"></i></div>
+                <h3>TB-500</h3>
+                <p>Vial 10mg · Timosina β4, modulación inflamatoria y reparación muscular.</p>
+                <div class="badge-purity">Pureza 99.4%</div>
+            </div>
+            <div class="peptide-card reveal">
+                <div class="vial-icon-card"><i class="fas fa-brain"></i></div>
+                <h3>Semax / Selank</h3>
+                <p>Vial dual 10mg · Neuroprotección, enfoque cognitivo, reducción de ansiedad.</p>
+                <div class="badge-purity">Liofilizado USP</div>
+            </div>
+            <div class="peptide-card reveal">
+                <div class="vial-icon-card"><i class="fas fa-dumbbell"></i></div>
+                <h3>Ipamorelin + MOD GRF</h3>
+                <p>Vial combo 5/5mg · Liberación fisiológica de GH, mejora del sueño y composición corporal.</p>
+                <div class="badge-purity">Sin retención hídrica</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Blog Científico con referencias médicas -->
+    <section id="blog" style="padding: 5rem 5%; background: #f8fafd;">
+        <div class="reveal" style="text-align: center;">
+            <h2 class="section-title"><i class="fas fa-microscope"></i> Evidencia Clínica: Beneficios de los Péptidos</h2>
+            <p style="color: #3a6b8c; max-width: 700px; margin: 0 auto 2rem;">Estudios revisados por pares respaldan la eficacia y seguridad de los péptidos en diversos campos terapéuticos.</p>
+        </div>
+        <div class="blog-grid">
+            <div class="blog-card reveal">
+                <i class="fas fa-dna" style="font-size: 2rem; color: #0a5c8e; margin-bottom: 0.8rem; display: block;"></i>
+                <h3>BPC-157: Cicatrización avanzada</h3>
+                <p>Estudios en modelos preclínicos demuestran que BPC-157 acelera la curación de tendones, ligamentos y úlceras intestinales, reduciendo el estrés oxidativo sistémico.</p>
+                <a href="https://pubmed.ncbi.nlm.nih.gov/25062042/" target="_blank" class="ref-link"><i class="fas fa-external-link-alt"></i> PubMed: Efectos regenerativos</a>
+            </div>
+            <div class="blog-card reveal">
+                <i class="fas fa-heartbeat" style="font-size: 2rem; color: #0a5c8e; margin-bottom: 0.8rem;"></i>
+                <h3>TB-500 (Timosina β4) y tejidos</h3>
+                <p>La timosina beta-4 promueve la angiogénesis, modula la inflamación y mejora la recuperación cardiaca y muscular según ensayos clínicos.</p>
+                <a href="https://pubmed.ncbi.nlm.nih.gov/21178973/" target="_blank" class="ref-link"><i class="fas fa-external-link-alt"></i> Referencia: Reparación tisular</a>
+            </div>
+            <div class="blog-card reveal">
+                <i class="fas fa-chart-line" style="font-size: 2rem; color: #0a5c8e; margin-bottom: 0.8rem;"></i>
+                <h3>Secretagogos de GH: Longevidad funcional</h3>
+                <p>Ipamorelin y Mod GRF estimulan el eje GH/IGF-1 de forma pulsátil, mejorando masa muscular, calidad del sueño y elasticidad cutánea sin efectos adversos relevantes.</p>
+                <a href="https://pubmed.ncbi.nlm.nih.gov/20453938/" target="_blank" class="ref-link"><i class="fas fa-external-link-alt"></i> Journal of Endocrinology</a>
+            </div>
+            <div class="blog-card reveal">
+                <i class="fas fa-brain" style="font-size: 2rem; color: #0a5c8e; margin-bottom: 0.8rem;"></i>
+                <h3>Neuropéptidos: Semax y Selank</h3>
+                <p>Investigaciones demuestran efectos ansiolíticos y nootrópicos, aumentando el BDNF y la plasticidad neuronal sin sedación.</p>
+                <a href="https://pubmed.ncbi.nlm.nih.gov/18452402/" target="_blank" class="ref-link"><i class="fas fa-external-link-alt"></i> Estudio de neuroprotección</a>
+            </div>
+        </div>
+        <div class="reveal" style="margin-top: 2rem; text-align: center;">
+            <div style="background: #eef2fa; border-radius: 2rem; padding: 1rem 2rem; display: inline-block;">
+                <i class="fas fa-quote-right"></i> Los péptidos representan una clase terapéutica con alta especificidad y bajo perfil tóxico.
+                <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10839217/" target="_blank" style="color:#0a5c8e; margin-left: 8px;">Leer revisión completa →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Science & Stats -->
+    <section id="science" style="padding: 5rem 5%; background: #ffffff;">
+        <div class="reveal">
+            <h2 class="section-title">Certificación y control analítico</h2>
+            <p style="color: #3a6b8c;">Cada lote es verificado por laboratorios independientes bajo estándares farmacéuticos.</p>
+        </div>
+        <div class="stats-container reveal">
+            <div class="stat-item"><div class="stat-number">>99%</div><div>Pureza HPLC</div></div>
+            <div class="stat-item"><div class="stat-number">-80°C</div><div>Cadena de frío</div></div>
+            <div class="stat-item"><div class="stat-number">+12</div><div>Péptidos disponibles</div></div>
+            <div class="stat-item"><div class="stat-number">24/7</div><div>Soporte clínico</div></div>
+        </div>
+    </section>
+
+    <!-- Contacto / Solicitud de viales -->
+    <section id="contact" style="padding: 5rem 5%; background: #f8fafd;">
+        <div class="reveal" style="text-align: center;">
+            <h2 class="section-title">Solicitar información de viales</h2>
+            <p style="color: #3a6b8c;">Asesoría personalizada por especialistas en farmacología peptídica.</p>
+        </div>
+        <div class="contact-form reveal">
+            <form id="leadForm">
+                <div class="input-group"><input type="text" id="name" placeholder="Nombre completo" required></div>
+                <div class="input-group"><input type="email" id="email" placeholder="Correo electrónico" required></div>
+                <div class="input-group"><input type="tel" id="phone" placeholder="Teléfono / WhatsApp"></div>
+                <div class="input-group"><textarea rows="3" id="message" placeholder="Indique el péptido de interés o necesidad clínica"></textarea></div>
+                <button type="submit" class="btn-primary" style="width:100%;"><i class="fas fa-vial"></i> Recibir catálogo + referencias</button>
+            </form>
+            <div id="formFeedback" style="margin-top: 1rem; text-align: center;"></div>
+        </div>
+    </section>
+</main>
+<footer>
+    <p><i class="fas fa-syringe"></i> Peptidos Costa Rica — Laboratorio clínico de referencia. Viales de investigación con respaldo científico.</p>
+    <p>© 2025 · Todos los derechos reservados · Enlaces a estudios revisados por pares (PubMed/PMC).</p>
+</footer>
+
+<script type="module">
+    import * as THREE from 'three';
+    const canvas = document.getElementById('canvas-3d');
+    const scene = new THREE.Scene();
+    scene.background = null;
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1, 7);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(2, 3, 2);
+    scene.add(dirLight);
+    
+    // Grupo vial farmacéutico
+    const vialGroup = new THREE.Group();
+    const bodyGeo = new THREE.CylinderGeometry(0.45, 0.35, 1.2, 32);
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xc8e4ff, metalness: 0.4, roughness: 0.2, transparent: true, opacity: 0.5 });
+    const vialBody = new THREE.Mesh(bodyGeo, glassMat);
+    vialGroup.add(vialBody);
+    const liquidGeo = new THREE.CylinderGeometry(0.38, 0.3, 0.8, 32);
+    const liquidMat = new THREE.MeshStandardMaterial({ color: 0x4dabf7, emissive: 0x1c5a8a, transparent: true, opacity: 0.65 });
+    const liquid = new THREE.Mesh(liquidGeo, liquidMat);
+    liquid.position.y = -0.1;
+    vialGroup.add(liquid);
+    const capGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.15, 32);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xc0cfdf, metalness: 0.3 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.y = 0.65;
+    vialGroup.add(cap);
+    scene.add(vialGroup);
+    vialGroup.position.y = -0.2;
+    
+    const particleCount = 500;
+    const particlesGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+        positions[i*3] = (Math.random() - 0.5) * 14;
+        positions[i*3+1] = (Math.random() - 0.5) * 7;
+        positions[i*3+2] = (Math.random() - 0.5) * 12 - 4;
+    }
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0x4dabf7, size: 0.04, transparent: true, opacity: 0.4 });
+    const particles = new THREE.Points(particlesGeometry, particleMat);
+    scene.add(particles);
+    
+    let time = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.008;
+        vialGroup.rotation.y = Math.sin(time * 0.25) * 0.3;
+        vialGroup.position.y = -0.2 + Math.sin(time * 1.1) * 0.04;
+        particles.rotation.y = time * 0.03;
+        camera.position.x = Math.sin(time * 0.08) * 0.15;
+        camera.lookAt(0, 0.2, 0);
+        renderer.render(scene, camera);
+    }
+    animate();
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    // Cursor effect profesional
+    const cursorGlow = document.getElementById('cursorGlow');
+    document.addEventListener('mousemove', (e) => {
+        cursorGlow.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
+    });
+    
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => { if(entry.isIntersecting) entry.target.classList.add('active'); });
+    }, { threshold: 0.2 });
+    reveals.forEach(el => observer.observe(el));
+    
+    // Form handler
+    const form = document.getElementById('leadForm');
+    const feedbackDiv = document.getElementById('formFeedback');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        if(!name || !email) {
+            feedbackDiv.innerHTML = '<span style="color:#c05a5a;">⚠️ Complete nombre y correo.</span>';
+            setTimeout(() => feedbackDiv.innerHTML = '', 3000);
+            return;
+        }
+        const btn = form.querySelector('button');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Procesando...';
+        btn.disabled = true;
+        setTimeout(() => {
+            feedbackDiv.innerHTML = '<span style="color:#1e7b5e;"><i class="fas fa-check-circle"></i> Solicitud recibida. En breve recibirá el dossier clínico.</span>';
+            form.reset();
+            btn.innerHTML = original;
+            btn.disabled = false;
+            setTimeout(() => feedbackDiv.innerHTML = '', 5000);
+        }, 1000);
+    });
+    
+    document.querySelectorAll('.nav-links a, .btn-primary[href^="#"], .btn-outline[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href');
+            if(targetId && targetId.startsWith('#')) {
+                e.preventDefault();
+                const target = document.querySelector(targetId);
+                if(target) window.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+            }
+        });
+    });
+    window.addEventListener('scroll', () => {
+        const nav = document.querySelector('.navbar');
+        if(window.scrollY > 30) nav.style.background = 'rgba(255,255,255,0.98)';
+        else nav.style.background = 'rgba(255,255,255,0.92)';
+    });
+</script>
+</body>
+</html>
